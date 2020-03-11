@@ -1,0 +1,11 @@
+build
+.idea/*
+**/.idea/*
+*.iml
+.gradle
+local.properties
+
+*~
+
+!.idea/runConfigurations
+!.idea/runConfigurations/*

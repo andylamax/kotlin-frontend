@@ -68,8 +68,8 @@ class NpmPackageManager(val project: Project) : PackageManager {
         withConfiguration("compile") { configuration ->
             configuration.dependencies.add(DefaultSelfResolvingDependency(object : AbstractFileCollection() {
                 override fun visitDependencies(context: TaskDependencyResolveContext) {
-                    context.add(DefaultTaskDependency())
                     super.visitDependencies(context)
+                    context.add(DefaultTaskDependency())
                 }
 
                 override fun getFiles(): MutableSet<File> {
@@ -91,12 +91,12 @@ class NpmPackageManager(val project: Project) : PackageManager {
 
                 val unpack = project.tasks.create("npm-preunpack", UnpackGradleDependenciesTask::class.java) { task ->
 
-                    try {
+//                    try {
                         Class.forName("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")
-                        // This line executed only on Kotlin 1.2.70+
-                        KotlinNewMpp.configureNpmCompileConfigurations(task)
-                    } catch (e: ClassNotFoundException) {
-                    }
+//                        // This line executed only on Kotlin 1.2.70+
+//                        KotlinNewMpp.configureNpmCompileConfigurations(task)
+//                    } catch (e: ClassNotFoundException) {
+//                    }
 
                     task.dependenciesProvider = { requiredDependencies }
                 }

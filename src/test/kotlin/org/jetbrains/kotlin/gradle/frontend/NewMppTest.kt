@@ -3,7 +3,6 @@ package org.jetbrains.kotlin.gradle.frontend
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import org.jetbrains.kotlin.gradle.frontend.util.mkdirsOrFail
-import org.jetbrains.kotlin.gradle.frontend.webpack.GenerateWebPackConfigTask
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -67,8 +66,9 @@ class NewMppTest {
         settingsGradleFile = projectDir.root.resolve("settings.gradle")
 
         projectDir.root.resolve("src/commonMain/kotlin/sample/Sample.kt").makeParentsAndWriteText("expect fun f(): Int")
-        projectDir.root.resolve("src/commonTest/kotlin/sample/SampleTests.kt").makeParentsAndWriteText(
-                """
+        projectDir.root.resolve("src/commonTest/kotlin/sample/SampleTests.kt").makeParentsAndWriteText("""
+import kotlin.test.*
+
 class SampleTests {
     @Test
     fun testMe() {
@@ -81,18 +81,21 @@ class SampleTests {
         projectDir.root.resolve("src/jsMain/kotlin/sample/SampleJs.kt").makeParentsAndWriteText("actual fun f(): Int = 1")
         projectDir.root.resolve("src/jsTest/kotlin/sample/SampleTestsJs.kt").makeParentsAndWriteText(
                 """
+import kotlin.test.*
+
 class SampleTestsJs {
     @Test
     fun testMe() {
         assertTrue(f() == 1)
     }
 }
-                """
-        )
+                """)
 
         projectDir.root.resolve("src/jvmMain/kotlin/sample/SampleJvm.kt").makeParentsAndWriteText("actual fun f(): Int = 2")
         projectDir.root.resolve("src/jvmTest/kotlin/sample/SampleTestsJvm.kt").makeParentsAndWriteText(
                 """
+import kotlin.test.*
+
 class SampleTestsJvm {
     @Test
     fun testMe() {
@@ -149,6 +152,8 @@ plugins {
     id 'org.jetbrains.kotlin.frontend'
 }
 
+apply plugin: "kotlin-dce-js"
+
 repositories {
     jcenter()
     maven { url "https://dl.bintray.com/kotlin/ktor" }
@@ -197,7 +202,7 @@ kotlinFrontend {
         devDependency("karma")
     }
 
-    sourceMaps = true
+    sourceMaps = false
 
     webpackBundle {
         bundleName = "main"
@@ -207,11 +212,10 @@ kotlinFrontend {
         )
 
         val result = runner.withArguments("bundle").build()
-//        val result = runner.withArguments("run").build()
-//        val result = runner.withArguments("webpack-config").build()
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":npm-preunpack")?.outcome)
         assertEquals(TaskOutcome.SUCCESS, result.task(":npm-install")?.outcome)
+        println(result.output)
         assertEquals(TaskOutcome.SUCCESS, result.task(":webpack-config")?.outcome)
         assertEquals(TaskOutcome.SUCCESS, result.task(":webpack-bundle")?.outcome)
 

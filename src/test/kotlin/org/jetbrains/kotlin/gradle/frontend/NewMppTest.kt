@@ -211,14 +211,17 @@ kotlinFrontend {
                 """
         )
 
-        val result = runner.withArguments("bundle").build()
+        val result1 = runner.withArguments("bundle").build()
+        val result2 = runner.withArguments("run").build()
 
-        assertEquals(TaskOutcome.SUCCESS, result.task(":npm-preunpack")?.outcome)
-        assertEquals(TaskOutcome.SUCCESS, result.task(":npm-install")?.outcome)
-        println(result.output)
-        assertEquals(TaskOutcome.SUCCESS, result.task(":webpack-config")?.outcome)
-        assertEquals(TaskOutcome.SUCCESS, result.task(":webpack-bundle")?.outcome)
+        assertEquals(TaskOutcome.SUCCESS, result1.task(":npm-preunpack")?.outcome)
+        assertEquals(TaskOutcome.SUCCESS, result1.task(":npm-install")?.outcome)
+        println(result1.output)
+        assertEquals(TaskOutcome.SUCCESS, result1.task(":webpack-config")?.outcome)
+        assertEquals(TaskOutcome.SUCCESS, result1.task(":webpack-bundle")?.outcome)
+        assertEquals(TaskOutcome.SUCCESS, result2.task(":run")?.outcome)
 
+        println(result2.output)
         assertTrue { projectDir.root.resolve("build/classes/kotlin/js/main/new-mpp.js").isFile }
         assertTrue { projectDir.root.resolve("build/bundle/main.bundle.js").isFile }
     }

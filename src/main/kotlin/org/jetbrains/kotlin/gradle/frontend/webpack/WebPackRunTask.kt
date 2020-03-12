@@ -18,17 +18,22 @@ open class WebPackRunTask : AbstractStartStopTask<WebPackRunTask.State>() {
     @Input
     var start: Boolean = true
 
-//    @get:Nested
-    private val config by lazy { project.frontendExtension.bundles().filterIsInstance<WebPackExtension>().singleOrNull() ?: throw GradleException("Only one webpack bundle is supported") }
+    //    @get:Nested
+    private val config by lazy {
+        project.frontendExtension.bundles().filterIsInstance<WebPackExtension>().singleOrNull()
+                ?: throw GradleException("Only one webpack bundle is supported")
+    }
 
     @InputFile
-    val webPackConfigFile = config.webpackConfigFile?.let { project.file(it) } ?: project.buildDir.resolve("webpack.config.js")
+    val webPackConfigFile = config.webpackConfigFile?.let {
+        project.file(it)
+    } ?: project.buildDir.resolve("webpack.config.js")
 
     @Internal
-    val logTailer = LogTail({serverLog().toPath() })
+    val logTailer = LogTail({ serverLog().toPath() })
 
-    @InputFile
-    val devServerLauncherFile = project.buildDir.resolve(DevServerLauncherFileName)
+    @OutputFile
+    val devServerLauncherFile = project.buildDir.resolve(DevServerLauncherFileName).apply { if (!exists()) createNewFile() }
 
     @get:Internal
     val hashes by lazy { hashOf(devServerLauncherFile, webPackConfigFile) } // TODO get all the hashes of all included configs
@@ -70,7 +75,8 @@ open class WebPackRunTask : AbstractStartStopTask<WebPackRunTask.State>() {
     }
 
     override fun beforeStart(): State? {
-        val launcherFileTemplate = javaClass.classLoader.getResourceAsStream("kotlin/webpack/webpack-dev-server-launcher.js")?.reader()?.readText() ?: throw GradleException("No dev-server launcher template found")
+        val launcherFileTemplate = javaClass.classLoader.getResourceAsStream("kotlin/webpack/webpack-dev-server-launcher.js")?.reader()?.readText()
+                ?: throw GradleException("No dev-server launcher template found")
 
         devServerLauncherFile.writeText(
                 launcherFileTemplate

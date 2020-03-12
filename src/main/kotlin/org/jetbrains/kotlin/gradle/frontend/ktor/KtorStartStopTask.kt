@@ -3,6 +3,7 @@ package org.jetbrains.kotlin.gradle.frontend.ktor
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.jetbrains.kotlin.gradle.frontend.KotlinNewMpp
@@ -21,7 +22,7 @@ open class KtorStartStopTask : AbstractStartStopTask<Int>() {
     @Input
     var start: Boolean = true
 
-    @Internal
+//    @Internal
     private val ext = project.extensions.getByType(KtorExtension::class.java)
 
     @get:Input
@@ -32,7 +33,7 @@ open class KtorStartStopTask : AbstractStartStopTask<Int>() {
     val jvmOptions: Array<String>
         get() = ext.jvmOptions
 
-    @get:Input
+    @get:InputFile
     val workDir: File
         get() = ext.workDir?.let { project.file(it) } ?: project.projectDir
 

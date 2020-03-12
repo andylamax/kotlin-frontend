@@ -7,14 +7,17 @@ import org.jetbrains.kotlin.gradle.frontend.util.*
 import org.jetbrains.kotlin.gradle.frontend.webpack.GenerateWebPackConfigTask.Companion.handleFile
 
 open class GenerateRollupConfigTask : DefaultTask() {
-    @Input
+    @InputFile
     val projectDir = project.projectDir
 
     @get:OutputFile
     val configFile by lazy { project.buildDir.resolve(RollupConfigFileName) }
 
     @get:Nested
-    val bundle by lazy { project.frontendExtension.bundles().filterIsInstance<RollupExtension>().singleOrNull() ?: throw GradleException("Only one rollup bundle is supported") }
+    val bundle by lazy {
+        project.frontendExtension.bundles().filterIsInstance<RollupExtension>().singleOrNull()
+                ?: throw GradleException("Only one rollup bundle is supported")
+    }
 
     @get:Input
     val bundleFrom by lazy { kotlinOutput(project).absolutePath!! }

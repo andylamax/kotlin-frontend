@@ -12,10 +12,12 @@ import java.util.concurrent.*
  */
 abstract class AbstractStartStopTask<S : Any> : DefaultTask() {
     @get:Internal
-    open val startupTimeoutSeconds: Int = project.findProperty("org.kotlin.frontend.startup.timeout")?.toString()?.toInt() ?: 30
+    open val startupTimeoutSeconds: Int = project.findProperty("org.kotlin.frontend.startup.timeout")?.toString()?.toInt()
+            ?: 30
 
     @get:Internal
-    open val shutdownTimeoutSeconds: Int = project.findProperty("org.kotlin.frontend.shutdown.timeout")?.toString()?.toInt() ?: 30
+    open val shutdownTimeoutSeconds: Int = project.findProperty("org.kotlin.frontend.shutdown.timeout")?.toString()?.toInt()
+            ?: 30
 
     @get:Internal
     protected abstract val identifier: String
@@ -41,6 +43,7 @@ abstract class AbstractStartStopTask<S : Any> : DefaultTask() {
     fun serverLog() = serverLog(project.buildDir.resolve("logs"))
     protected open fun serverLog(logsDir: File): File = logsDir.resolve("$identifier.log")
 
+    @get:Internal
     protected open val stateFile: File
         get() = project.buildDir.resolve(".run-$identifier.txt")
 

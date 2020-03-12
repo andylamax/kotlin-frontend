@@ -18,16 +18,16 @@ open class WebPackRunTask : AbstractStartStopTask<WebPackRunTask.State>() {
     @Input
     var start: Boolean = true
 
-    @get:Nested
+//    @get:Nested
     private val config by lazy { project.frontendExtension.bundles().filterIsInstance<WebPackExtension>().singleOrNull() ?: throw GradleException("Only one webpack bundle is supported") }
 
-    @Input
+    @InputFile
     val webPackConfigFile = config.webpackConfigFile?.let { project.file(it) } ?: project.buildDir.resolve("webpack.config.js")
 
     @Internal
     val logTailer = LogTail({serverLog().toPath() })
 
-    @Input
+    @InputFile
     val devServerLauncherFile = project.buildDir.resolve(DevServerLauncherFileName)
 
     @get:Internal

@@ -9,19 +9,21 @@ import java.io.*
  * @author Sergey Mashkov
  */
 open class NpmIndexTask : DefaultTask() {
-    @Input
-    val nodeModulesDir: File = project.buildDir.resolve("node_modules")
+    private val npm = project.extensions.getByType(NpmExtension::class.java)
+
+    @OutputDirectory
+    val nodeModulesDir: File = npm.nodeModulesDir
 
     @OutputFile
-    val modulesWithDtsList: File = project.buildDir.resolve(".modules.with.types.txt")
+    val modulesWithDtsList: File = project.rootProject.buildDir.resolve(".modules.with.types.txt")
 
     @OutputFile
-    val kotlinModulesList: File = project.buildDir.resolve(".modules.with.kotlin.txt")
+    val kotlinModulesList: File = project.rootProject.buildDir.resolve(".modules.with.kotlin.txt")
 
     @TaskAction
     fun findTypeScripts() {
         modulesWithDtsList.bufferedWriter().use { out ->
-            project.fileTree(nodeModulesDir)
+            project.rootProject.fileTree(nodeModulesDir)
                     .filter { it.name == "typings.json" || (it.name == "package.json" && packageJsonContainsTypes(it)) }
                     .map { it.parentFile!! }
                     .distinct()
@@ -32,7 +34,7 @@ open class NpmIndexTask : DefaultTask() {
     @TaskAction
     fun findKotlinModules() {
         kotlinModulesList.bufferedWriter().use { out ->
-            project.fileTree(nodeModulesDir)
+            project.rootProject.fileTree(nodeModulesDir)
                     .filter { it.extension.let { it == "jar" || it == "kotlin_module" } || it.name.endsWith(".meta.js") }
                     .mapNotNull { file ->
                         when (file.extension) {
@@ -54,10 +56,12 @@ open class NpmIndexTask : DefaultTask() {
                         }
                     }
                     .distinct()
-                    .filter { it.resolve("package.json").let { packageJson ->
-                        !packageJson.exists() || (JsonSlurper().parse(packageJson) as Map<*, *>)["_source"] != "gradle"
-                        true
-                    } }
+                    .filter {
+                        it.resolve("package.json").let { packageJson ->
+                            !packageJson.exists() || (JsonSlurper().parse(packageJson) as Map<*, *>)["_source"] != "gradle"
+                            true
+                        }
+                    }
                     .joinToLines(out) { it.path }
         }
     }

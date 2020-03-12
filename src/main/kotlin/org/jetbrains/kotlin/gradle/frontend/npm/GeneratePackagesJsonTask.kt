@@ -4,6 +4,7 @@ import groovy.json.*
 import org.gradle.api.*
 import org.gradle.api.plugins.*
 import org.gradle.api.tasks.*
+import org.gradle.api.tasks.Optional
 import org.jetbrains.kotlin.gradle.dsl.*
 import org.jetbrains.kotlin.gradle.frontend.*
 import org.jetbrains.kotlin.gradle.frontend.util.*
@@ -29,11 +30,14 @@ open class GeneratePackagesJsonTask : DefaultTask() {
     val unpackResults: List<File>
         get() = project.tasks.filterIsInstance<UnpackGradleDependenciesTask>().map { it.resultFile }
 
-    @Input
-    val configPartsDir = project.projectDir.resolve("package.json.d")
+    @InputDirectory
+    @Optional
+    val configPartsDir = project.projectDir.resolve("package.json.d").apply {
+        mkdirsOrFail()
+    }
 
-    @Internal
-    private val npm = project.extensions.getByType(NpmExtension::class.java)!!
+    //    @get:Input
+    private val npm = project.extensions.getByType(NpmExtension::class.java)
 
     @get:Input
     @Suppress("unused")
@@ -51,9 +55,10 @@ open class GeneratePackagesJsonTask : DefaultTask() {
         get() = npm.versionReplacements.joinToString()
 
     @get:Input
-    val moduleNames: List<String> by lazy { project.tasks.withType(KotlinJsCompile::class.java)
-            .filter { !it.name.contains("test", ignoreCase = true) }
-            .mapNotNull { it.kotlinOptions.outputFile?.substringAfterLast('/')?.substringAfterLast('\\')?.removeSuffix(".js") }
+    val moduleNames: List<String> by lazy {
+        project.tasks.withType(KotlinJsCompile::class.java)
+                .filter { !it.name.contains("test", ignoreCase = true) }
+                .mapNotNull { it.kotlinOptions.outputFile?.substringAfterLast('/')?.substringAfterLast('\\')?.removeSuffix(".js") }
     }
 
     @OutputFile
@@ -62,6 +67,7 @@ open class GeneratePackagesJsonTask : DefaultTask() {
     @OutputFile
     lateinit var npmrcFile: File
 
+    @OutputFile
     val buildPackageJsonFile: File?
 
     init {
@@ -86,16 +92,17 @@ open class GeneratePackagesJsonTask : DefaultTask() {
         logger.info("Configuring npm")
 
         val dependencies = npm.dependencies + (project.tasks.filterIsInstance<UnpackGradleDependenciesTask>().map { task ->
-            task.resultNames?.map { Dependency(it.name, it.semver, Dependency.RuntimeScope) } ?: task.resultFile.readLinesOrEmpty()
-                    .map { it.split("/", limit = 4).map(String::trim) }
-                    .filter { it.size == 4 }
-                    .map { Dependency(it[0], it[2], Dependency.RuntimeScope) }
+            task.resultNames?.map { Dependency(it.name, it.semver, Dependency.RuntimeScope) }
+                    ?: task.resultFile.readLinesOrEmpty()
+                            .map { it.split("/", limit = 4).map(String::trim) }
+                            .filter { it.size == 4 }
+                            .map { Dependency(it[0], it[2], Dependency.RuntimeScope) }
         }).flatten() + toolsDependencies.filter { it.scope == Dependency.RuntimeScope }
 
         val devDependencies = mutableListOf(*npm.developmentDependencies.toTypedArray())
 
         devDependencies.addAll(toolsDependencies.filter {
-            (it.scope == Dependency.DevelopmentScope) && devDependencies.all { dep ->  dep.name != it.name }
+            (it.scope == Dependency.DevelopmentScope) && devDependencies.all { dep -> dep.name != it.name }
         })
 
         if (logger.isDebugEnabled) {

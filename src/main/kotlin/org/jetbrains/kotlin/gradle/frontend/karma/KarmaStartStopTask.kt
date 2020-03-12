@@ -17,7 +17,7 @@ open class KarmaStartStopTask : AbstractStartStopTask<Int>() {
     @Input
     var start: Boolean = false
 
-    @Internal
+//    @Internal
     private val logTailer = LogTail({ serverLog().toPath() })
 
     override val identifier = "karma"

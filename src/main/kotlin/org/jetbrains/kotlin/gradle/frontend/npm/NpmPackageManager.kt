@@ -47,7 +47,7 @@ class NpmPackageManager(val project: Project) : PackageManager {
     }
 
     override fun apply(containerTask: Task) {
-        project.extensions.create("npm", NpmExtension::class.java)
+        project.extensions.create("npm", NpmExtension::class.java, project)
 
         injectDependencies()
         project.afterEvaluate {
@@ -92,7 +92,7 @@ class NpmPackageManager(val project: Project) : PackageManager {
                 val unpack = project.tasks.create("npm-preunpack", UnpackGradleDependenciesTask::class.java) { task ->
 
 //                    try {
-                        Class.forName("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")
+                    Class.forName("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")
 //                        // This line executed only on Kotlin 1.2.70+
 //                        KotlinNewMpp.configureNpmCompileConfigurations(task)
 //                    } catch (e: ClassNotFoundException) {

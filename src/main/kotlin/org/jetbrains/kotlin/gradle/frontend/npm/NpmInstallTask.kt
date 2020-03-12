@@ -19,17 +19,19 @@ import java.nio.file.*
  * @author Sergey Mashkov
  */
 open class NpmInstallTask : DefaultTask() {
+    private val npm = project.extensions.getByType(NpmExtension::class.java)
+
     @InputFile
     lateinit var packageJsonFile: File
 
-    @Internal
+//    @Internal
     private val npmDirFile = project.tasks
             .filterIsInstance<NodeJsDownloadTask>()
             .map { it.nodePathTextFile }
             .firstOrNull()
 
     @OutputDirectory
-    val nodeModulesDir: File = project.rootProject.buildDir.resolve("node_modules")
+    val nodeModulesDir: File = npm.nodeModulesDir //project.rootProject.buildDir.resolve("node_modules")
 
     init {
         if (npmDirFile != null) inputs.file(npmDirFile)
@@ -62,10 +64,10 @@ open class NpmInstallTask : DefaultTask() {
         }
 
         ProcessBuilder(npmPath, "install")
-                .directory(project.buildDir)
+                .directory(project.rootProject.buildDir)
                 .apply { ensurePath(environment(), npm.parentFile.absolutePath) }
                 .redirectErrorStream(true)
-                .startWithRedirectOnFail(project, "npm install")
+                .startWithRedirectOnFail(project.rootProject, "npm install")
     }
 
     private fun ensureSymbolicLink(link: Path, target: Path) {
@@ -93,7 +95,7 @@ open class NpmInstallTask : DefaultTask() {
             // Java doesn't provide any API to create junctions so we call native tool
             project.exec { spec: ExecSpec ->
                 spec.apply {
-                    workingDir(project.buildDir)
+                    workingDir(project.rootProject.buildDir)
                     commandLine("cmd", "/C", "mklink", "/J", link.toString(), target.toString())
                 }
             }.assertNormalExitValue()

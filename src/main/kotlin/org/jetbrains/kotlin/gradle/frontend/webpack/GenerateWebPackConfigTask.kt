@@ -16,7 +16,7 @@ import java.util.ArrayDeque
  */
 open class GenerateWebPackConfigTask : DefaultTask() {
     @get:Internal
-    private val configsDir: File
+    val configsDir: File
         get() = project.file("$projectDirectory/webpack.config.d").apply {
             mkdirsOrFail()
         }
@@ -30,17 +30,19 @@ open class GenerateWebPackConfigTask : DefaultTask() {
     @get:Internal
     val bundles by lazy { project.frontendExtension.bundles().filterIsInstance<WebPackExtension>() }
 
-    @get:Input
+    //    @get:Input
     private val bundleNameInput: Any by lazy { bundles.singleOrNull()?.bundleName ?: "" }
 
-    @get:Input
+    //    @get:Input
     private val publicPathInput: Any by lazy { bundles.singleOrNull()?.publicPath ?: "" }
 
-    @get:Input
+    //    @get:Input
     private val outputFileName by lazy { kotlinOutput(project).name }
 
-    @get:Input
-    val bundleDirectory by lazy { handleFile(project, project.frontendExtension.bundlesDirectory) }
+    @get:OutputDirectory
+    val bundleDirectory by lazy {
+        handleFile(project, project.frontendExtension.bundlesDirectory).apply { mkdirsOrFail() }
+    }
 
     @OutputFile
     val webPackConfigFile: File = project.buildDir.resolve("webpack.config.js")
@@ -48,7 +50,7 @@ open class GenerateWebPackConfigTask : DefaultTask() {
     @Input
     val defined = project.frontendExtension.defined
 
-    @get:Input
+    //    @get:Input
     private val isDceEnabled: Boolean by lazy {
         !project.tasks
                 .withType(KotlinJsDce::class.java)

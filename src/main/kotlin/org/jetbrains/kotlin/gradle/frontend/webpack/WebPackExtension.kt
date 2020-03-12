@@ -17,7 +17,7 @@ open class WebPackExtension(project: Project) : BundleConfig {
     @Input
     override var sourceMapEnabled: Boolean = project.frontendExtension.sourceMaps
 
-    @Input
+    @InputFile
     @Optional
     var contentPath: File? = null
 

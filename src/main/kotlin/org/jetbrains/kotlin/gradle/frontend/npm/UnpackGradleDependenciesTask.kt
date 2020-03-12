@@ -17,17 +17,21 @@ open class UnpackGradleDependenciesTask : DefaultTask() {
     @Internal
     lateinit var dependenciesProvider: () -> List<Dependency>
 
+    @Internal
     var customCompileConfiguration: Configuration? = null
 
+    @Internal
     var customTestCompileConfiguration: Configuration? = null
 
-    @get:Input
+    @get:Internal
     val compileConfiguration: Configuration
-        get() = customCompileConfiguration ?: project.configurations.getByName(JavaPlugin.COMPILE_CONFIGURATION_NAME)
+        get() = customCompileConfiguration
+                ?: project.configurations.getByName(JavaPlugin.COMPILE_CONFIGURATION_NAME)
 
-    @get:Input
+    @get:Internal
     val testCompileConfiguration: Configuration
-        get() = customTestCompileConfiguration ?: project.configurations.getByName(JavaPlugin.TEST_COMPILE_CONFIGURATION_NAME)
+        get() = customTestCompileConfiguration
+                ?: project.configurations.getByName(JavaPlugin.TEST_COMPILE_CONFIGURATION_NAME)
 
     @OutputFile
     val resultFile = unpackFile(project)
@@ -35,7 +39,7 @@ open class UnpackGradleDependenciesTask : DefaultTask() {
     @Internal
     var resultNames: MutableList<NameVersionsUri>? = null
 
-    @Internal
+    //    @Internal
     private val npm: NpmExtension = project.extensions.findByType(NpmExtension::class.java)!!
 
     @get:Input
@@ -87,7 +91,8 @@ open class UnpackGradleDependenciesTask : DefaultTask() {
                                     .into(outDir)
                         }
 
-                        val existingVersion = existingPackageJson["version"]?.toString() ?: toSemver(null)
+                        val existingVersion = existingPackageJson["version"]?.toString()
+                                ?: toSemver(null)
 
                         resultNames?.add(NameVersionsUri(name, artifact.moduleVersion.id.version, existingVersion, outDir.toLocalURI()))
                     } else {

@@ -20,7 +20,7 @@ open class NodeJsDownloadTask : DefaultTask() {
     @get:OutputFile
     var nodePathTextFile: File = project.buildDir.resolve("nodePath.txt")
 
-    @Internal
+//    @Internal
     private val target = project.gradle.gradleUserHomeDir.resolve("nodejs")
 
     @TaskAction

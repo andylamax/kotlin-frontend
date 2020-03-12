@@ -9,6 +9,7 @@ import java.util.*
  * @author Sergey Mashkov
  */
 open class NpmDependenciesTask : DefaultTask() {
+    @OutputFiles
     var results: List<File> = emptyList()
 
     @get:InputFile
@@ -21,11 +22,12 @@ open class NpmDependenciesTask : DefaultTask() {
             if (handled.add(task.kotlinModulesList) && task.kotlinModulesList.canRead()) {
                 val imported = if (unpackedFiles.canRead()) {
                     unpackedFiles.readLines()
-                            .map { it.trim()
-                                    .removeSuffix("/")
-                                    .removeSuffix(File.separator)
-                                    .substringAfterLast('/')
-                                    .substringAfterLast(File.separatorChar)
+                            .map {
+                                it.trim()
+                                        .removeSuffix("/")
+                                        .removeSuffix(File.separator)
+                                        .substringAfterLast('/')
+                                        .substringAfterLast(File.separatorChar)
                             }
                             .distinct()
                             .toSet()

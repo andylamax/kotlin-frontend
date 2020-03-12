@@ -6,6 +6,7 @@ import org.gradle.api.*
 import org.gradle.api.artifacts.*
 import org.gradle.api.plugins.*
 import org.gradle.api.tasks.*
+import org.jetbrains.kotlin.gradle.frontend.npm.NpmExtension
 import org.jetbrains.kotlin.gradle.frontend.util.*
 import org.jetbrains.kotlin.gradle.tasks.*
 import java.io.*
@@ -65,6 +66,8 @@ open class GenerateWebPackConfigTask : DefaultTask() {
         }
     }
 
+    private val npm = project.extensions.getByType(NpmExtension::class.java)
+
     fun getModuleResolveRoots(testMode: Boolean): List<String> {
         val resolveRoots = mutableListOf<String>()
 
@@ -111,7 +114,7 @@ open class GenerateWebPackConfigTask : DefaultTask() {
 
         // node modules
         resolveRoots.add(project.buildDir.resolve("node_modules").absolutePath)
-        resolveRoots.add(project.rootProject.buildDir.resolve("node_modules").absolutePath)
+        resolveRoots.add(npm.nodeModulesDir.absolutePath)
         resolveRoots.add(project.buildDir.resolve("node_modules").toRelativeString(project.buildDir))
 
         return resolveRoots

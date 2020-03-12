@@ -123,11 +123,11 @@ pluginManagement {
             }
         }
     }
-
+    
     resolutionStrategy {
         eachPlugin {
-            if (requested.id.id == "org.jetbrains.kotlin.frontend") {
-                useModule('org.jetbrains.kotlin:kotlin-frontend-plugin:0.0.38-SNAPSHOT')
+            if (requested.id.id == "kotlin-frontend") {
+                useModule('tz.co.asoft:kotlin-frontend:0.0.46')
             }
         }
     }
@@ -149,19 +149,17 @@ rootProject.name = 'new-mpp'
                 """
 plugins {
     id 'kotlin-multiplatform' version '$kotlinVersion'
-    id 'org.jetbrains.kotlin.frontend'
+    id 'kotlin-frontend'
 }
 
 apply plugin: "kotlin-dce-js"
 
 repositories {
     jcenter()
-    maven { url "https://dl.bintray.com/kotlin/ktor" }
     mavenCentral()
 }
 
 kotlin {
-
     js {
         compilations.all {
             tasks[compileKotlinTaskName].kotlinOptions {
@@ -199,7 +197,8 @@ kotlin {
 
 kotlinFrontend {
     npm {
-        devDependency("karma")
+        dependency("is-number","7.0.0")
+//        devDependency("karma")
     }
 
     sourceMaps = false
@@ -211,18 +210,38 @@ kotlinFrontend {
                 """
         )
 
-        val result1 = runner.withArguments("bundle").build()
-        val result2 = runner.withArguments("run").build()
+        println("Running npm-install")
+        runner.withArguments("npm-install").build().apply {
+            println("Done running install")
+            val nodeModules = projectDir.root.resolve("build/node_modules").listFiles()
+            println("Installed ${nodeModules?.size} modules")
+            nodeModules?.take(3)?.forEach { println(it.name) }
+            assertEquals(true, nodeModules?.isNotEmpty())
+            println(output)
+            assertEquals(TaskOutcome.SUCCESS, task(":npm-install")?.outcome)
+        }
 
-        assertEquals(TaskOutcome.SUCCESS, result1.task(":npm-preunpack")?.outcome)
-        assertEquals(TaskOutcome.SUCCESS, result1.task(":npm-install")?.outcome)
-        println(result1.output)
-        assertEquals(TaskOutcome.SUCCESS, result1.task(":webpack-config")?.outcome)
-        assertEquals(TaskOutcome.SUCCESS, result1.task(":webpack-bundle")?.outcome)
-        assertEquals(TaskOutcome.SUCCESS, result2.task(":run")?.outcome)
+        println("Running Bundle")
+        runner.withArguments("bundle").build().apply {
+            assertEquals(TaskOutcome.UP_TO_DATE, task(":npm-preunpack")?.outcome)
+            assertEquals(TaskOutcome.UP_TO_DATE, task(":npm-install")?.outcome)
+            assertEquals(TaskOutcome.SUCCESS, task(":webpack-config")?.outcome)
+            assertEquals(TaskOutcome.SUCCESS, task(":webpack-bundle")?.outcome)
+            assertTrue { projectDir.root.resolve("build/classes/kotlin/js/main/new-mpp.js").isFile }
+            assertTrue { projectDir.root.resolve("build/bundle/main.bundle.js").isFile }
+            println(output)
+        }
 
-        println(result2.output)
-        assertTrue { projectDir.root.resolve("build/classes/kotlin/js/main/new-mpp.js").isFile }
-        assertTrue { projectDir.root.resolve("build/bundle/main.bundle.js").isFile }
+        println("Running run")
+        runner.withArguments("run").build().apply {
+            assertEquals(TaskOutcome.SUCCESS, task(":run")?.outcome)
+            println(output)
+        }
+
+        println("Running stop")
+        runner.withArguments("stop").build().apply {
+            assertEquals(TaskOutcome.SUCCESS, task(":stop")?.outcome)
+            println(output)
+        }
     }
 }

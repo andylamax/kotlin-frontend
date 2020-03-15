@@ -1,8 +1,12 @@
 package org.jetbrains.kotlin.gradle.frontend
 
+import net.rubygrapefruit.platform.Native
+import net.rubygrapefruit.platform.ProcessLauncher
+import org.gradle.api.Project
+import org.gradle.api.internal.project.DefaultProject
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
-import org.jetbrains.kotlin.gradle.frontend.util.mkdirsOrFail
+import org.jetbrains.kotlin.gradle.frontend.util.*
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Rule
@@ -11,12 +15,16 @@ import org.junit.rules.TemporaryFolder
 import org.junit.rules.TestName
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
+import sun.java2d.loops.ProcessPath
 import java.io.File
+import java.net.URL
+import java.util.concurrent.Executor
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class NewMppTest {
-    private val gradleVersion: String = "6.1.1"//"4.10.3"
+
+class NewMppSubProjectTest {
+    private val gradleVersion: String = "6.1.1"
     private val kotlinVersion: String = "1.3.70"
 
     private val port = 8098
@@ -63,11 +71,16 @@ class NewMppTest {
         projectDir.create()
         projectDir.root.resolve("build/kotlin-build/caches").mkdirsOrFail()
 
-        buildGradleFile = projectDir.root.resolve("build.gradle")
+        buildGradleFile = projectDir.root.resolve("sub/build.gradle")
+        projectDir.root.resolve("build.gradle").makeParentsAndWriteText("""
+            ext {
+                kotlin_version = "$kotlinVersion"
+            }
+        """.trimIndent())
         settingsGradleFile = projectDir.root.resolve("settings.gradle")
 
-        projectDir.root.resolve("src/commonMain/kotlin/sample/Sample.kt").makeParentsAndWriteText("expect fun f(): Int")
-        projectDir.root.resolve("src/commonTest/kotlin/sample/SampleTests.kt").makeParentsAndWriteText("""
+        projectDir.root.resolve("sub/src/commonMain/kotlin/sample/Sample.kt").makeParentsAndWriteText("expect fun f(): Int")
+        projectDir.root.resolve("sub/src/commonTest/kotlin/sample/SampleTests.kt").makeParentsAndWriteText("""
 import kotlin.test.*
 
 class SampleTests {
@@ -79,8 +92,24 @@ class SampleTests {
                 """
         )
 
-        projectDir.root.resolve("src/jsMain/kotlin/sample/SampleJs.kt").makeParentsAndWriteText("actual fun f(): Int = 1")
-        projectDir.root.resolve("src/jsTest/kotlin/sample/SampleTestsJs.kt").makeParentsAndWriteText(
+        projectDir.root.resolve("sub/src/jsMain/kotlin/sample/SampleJs.kt").makeParentsAndWriteText(
+                """
+                fun main() {
+                    println("This works")        
+                }
+                
+                actual fun f(): Int = 1
+                """.trimIndent())
+        projectDir.root.resolve("sub/src/jsMain/resources/index.html").makeParentsAndWriteText(
+                """
+                    <html>
+                        <head><title>Mpp: Sub Test</title></head>
+                        <body><h1>Works</h2><body>
+                        <script src='main.bundle.js'>
+                    </html>
+                """.trimIndent()
+        )
+        projectDir.root.resolve("sub/src/jsTest/kotlin/sample/SampleTestsJs.kt").makeParentsAndWriteText(
                 """
 import kotlin.test.*
 
@@ -92,8 +121,8 @@ class SampleTestsJs {
 }
                 """)
 
-        projectDir.root.resolve("src/jvmMain/kotlin/sample/SampleJvm.kt").makeParentsAndWriteText("actual fun f(): Int = 2")
-        projectDir.root.resolve("src/jvmTest/kotlin/sample/SampleTestsJvm.kt").makeParentsAndWriteText(
+        projectDir.root.resolve("sub/src/jvmMain/kotlin/sample/SampleJvm.kt").makeParentsAndWriteText("actual fun f(): Int = 2")
+        projectDir.root.resolve("sub/src/jvmTest/kotlin/sample/SampleTestsJvm.kt").makeParentsAndWriteText(
                 """
 import kotlin.test.*
 
@@ -140,12 +169,39 @@ pluginManagement {
 }
 
 rootProject.name = 'new-mpp'
+include(":sub")
                 """
         )
     }
 
+    fun ProcessBuilder.startProcess(name: String, exec: Executor = DummyExecutor): Process {
+        require(command().isNotEmpty()) { "No command specified" }
+
+        val process = Native.get(ProcessLauncher::class.java).let { l ->
+            l.start(this)!!
+        }
+
+        val buffered = OutputStreamWithBuffer(System.out, 8192)
+
+        val rc = try {
+            ProcessHandler(process, buffered, buffered, exec).startAndWaitFor()
+        } catch (t: Throwable) {
+            println("Process ${command().first()} failed: ${t.message}")
+            process.destroyForcibly()
+            -1
+        }
+
+        if (rc != 0) {
+            println(buffered.lines().toString(Charsets.UTF_8))
+            println("Command failed (exit code = $rc): ${command().joinToString(" ")}")
+            throw Throwable("$name failed (exit code = $rc)")
+        }
+
+        return process
+    }
+
     @Test
-    fun testSimple() {
+    fun simpleMppSubProject() {
         buildGradleFile.writeText(
                 """
 plugins {
@@ -198,7 +254,7 @@ kotlin {
 
 kotlinFrontend {
     npm {
-        dependency("is-number","7.0.0")
+//        dependency("is-number","7.0.0")
 //        devDependency("karma")
     }
 
@@ -212,36 +268,34 @@ kotlinFrontend {
         )
 
         println("Running npm-install")
-        runner.withArguments("npm-install").build().apply {
-            println("Done running install")
+        runner.withArguments(":sub:npm-install").build().apply {
             val nodeModules = projectDir.root.resolve("build/node_modules").listFiles()
-            println("Installed ${nodeModules?.size} modules")
             nodeModules?.take(3)?.forEach { println(it.name) }
             assertEquals(true, nodeModules?.isNotEmpty())
             println(output)
-            assertEquals(TaskOutcome.SUCCESS, task(":npm-install")?.outcome)
+            assertEquals(TaskOutcome.SUCCESS, task(":sub:npm-install")?.outcome)
         }
 
         println("Running Bundle")
-        runner.withArguments("bundle").build().apply {
-            assertEquals(TaskOutcome.UP_TO_DATE, task(":npm-preunpack")?.outcome)
-            assertEquals(TaskOutcome.UP_TO_DATE, task(":npm-install")?.outcome)
-            assertEquals(TaskOutcome.SUCCESS, task(":webpack-config")?.outcome)
-            assertEquals(TaskOutcome.SUCCESS, task(":webpack-bundle")?.outcome)
-            assertTrue { projectDir.root.resolve("build/classes/kotlin/js/main/new-mpp.js").isFile }
-            assertTrue { projectDir.root.resolve("build/bundle/main.bundle.js").isFile }
+        runner.withArguments(":sub:bundle").build().apply {
+            assertEquals(TaskOutcome.UP_TO_DATE, task(":sub:npm-preunpack")?.outcome)
+            assertEquals(TaskOutcome.UP_TO_DATE, task(":sub:npm-install")?.outcome)
+            assertEquals(TaskOutcome.SUCCESS, task(":sub:webpack-config")?.outcome)
+            assertEquals(TaskOutcome.SUCCESS, task(":sub:webpack-bundle")?.outcome)
+            assertTrue { projectDir.root.resolve("sub/build/classes/kotlin/js/main/sub.js").isFile }
+            assertTrue { projectDir.root.resolve("sub/build/bundle/main.bundle.js").isFile }
             println(output)
         }
 
         println("Running run")
-        runner.withArguments("run").build().apply {
-            assertEquals(TaskOutcome.SUCCESS, task(":run")?.outcome)
+        runner.withArguments(":sub:run").build().apply {
+            assertEquals(TaskOutcome.SUCCESS, task(":sub:run")?.outcome)
             println(output)
         }
 
         println("Running stop")
         runner.withArguments("stop").build().apply {
-            assertEquals(TaskOutcome.SUCCESS, task(":stop")?.outcome)
+            assertEquals(TaskOutcome.SUCCESS, task(":sub:stop")?.outcome)
             println(output)
         }
     }

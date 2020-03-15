@@ -19,7 +19,10 @@ import java.io.File
 
 class NpmPackageManager(val project: Project) : PackageManager {
     private val packageJsonFile: File
-        get() = project.buildDir.resolve("package.json")
+        get() = project.buildDir.resolve("package.json").apply {
+            parentFile?.mkdirs()
+            if (!exists()) createNewFile()
+        }
 
     private val requiredDependencies = mutableListOf<Dependency>()
     private var tasksDefined = false
@@ -48,7 +51,6 @@ class NpmPackageManager(val project: Project) : PackageManager {
 
     override fun apply(containerTask: Task) {
         project.extensions.create("npm", NpmExtension::class.java, project)
-
         injectDependencies()
         project.afterEvaluate {
             defineTasks()
@@ -90,14 +92,7 @@ class NpmPackageManager(val project: Project) : PackageManager {
             if (npm.dependencies.isNotEmpty() || npm.developmentDependencies.isNotEmpty() || project.projectDir.resolve("package.json.d").exists() || requiredDependencies.isNotEmpty()) {
 
                 val unpack = project.tasks.create("npm-preunpack", UnpackGradleDependenciesTask::class.java) { task ->
-
-//                    try {
                     Class.forName("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")
-//                        // This line executed only on Kotlin 1.2.70+
-//                        KotlinNewMpp.configureNpmCompileConfigurations(task)
-//                    } catch (e: ClassNotFoundException) {
-//                    }
-
                     task.dependenciesProvider = { requiredDependencies }
                 }
                 val configure = project.tasks.create("npm-configure", GeneratePackagesJsonTask::class.java) { task ->
@@ -105,14 +100,13 @@ class NpmPackageManager(val project: Project) : PackageManager {
                     task.group = NpmGroup
 
                     task.dependenciesProvider = { requiredDependencies }
-                    task.packageJsonFile = packageJsonFile
-                    task.npmrcFile = packageJsonFile.resolveSibling(".npmrc")
+//                    task.packageJsonFile = packageJsonFile
+//                    task.npmrcFile = packageJsonFile.resolveSibling(".npmrc")
                 }
                 val install = project.tasks.create("npm-install", NpmInstallTask::class.java) { task ->
                     task.description = "Install npm packages"
                     task.group = NpmGroup
-
-                    task.packageJsonFile = packageJsonFile
+//                    task.packageJsonFile = packageJsonFile
                 }
                 val index = project.tasks.create("npm-index", NpmIndexTask::class.java)
                 val setup = project.tasks.create("npm-deps", NpmDependenciesTask::class.java)

@@ -12,38 +12,52 @@ object WebPackLauncher : Launcher {
                        packagesTask: Task, startTask: Task, stopTask: Task) {
         project.afterEvaluate {
             if (project.frontendExtension.bundles().any { it is WebPackExtension }) {
-                val run = project.tasks.create("webpack-run", WebPackRunTask::class.java) { t ->
-                    t.start = true
-                    t.description = "Start webpack dev server (if not yet running)"
-                    t.group = WebPackBundler.WebPackGroup
-                }
-                val stop = project.tasks.create("webpack-stop", WebPackRunTask::class.java) { t ->
-                    t.start = false
-                    t.description = "Stop webpack dev server (if running)"
-                    t.group = WebPackBundler.WebPackGroup
-                }
+                try {
+//                    val run = project.tasks.create("webpack-run", WebPackRunTask::class.java) { t ->
+//                        t.start = true
+//                        t.description = "Start webpack dev server (if not yet running)"
+//                        t.group = WebPackBundler.WebPackGroup
+//                    }
+                    val run = project.tasks.create("webpack-run", WebpackDevServerStartTask::class.java) { t ->
+                        t.description = "Start webpack dev server (if not yet running)"
+                        t.group = WebPackBundler.WebPackGroup
+                    }
+//                    val stop = project.tasks.create("webpack-stop", WebPackRunTask::class.java) { t ->
+//                        t.start = false
+//                        t.description = "Stop webpack dev server (if running)"
+//                        t.group = WebPackBundler.WebPackGroup
+//                    }
+                    val stop = project.tasks.create("webpack-stop", WebpackDevServerStopTask::class.java) { t ->
+                        t.description = "Stop webpack dev server (if running)"
+                        t.group = WebPackBundler.WebPackGroup
+                    }
 
-                project.withTask(GenerateWebPackConfigTask::class) { task ->
-                    run.dependsOn(task)
-                }
-                project.withTask(RelativizeSourceMapTask::class) { task ->
-                    run.dependsOn(task)
-                }
+                    project.withTask(GenerateWebPackConfigTask::class) { task ->
+                        run.dependsOn(task)
+                    }
+                    project.withTask(RelativizeSourceMapTask::class) { task ->
+                        run.dependsOn(task)
+                    }
 
-                project.withTask<KotlinJsCompile> { task ->
-                    run.dependsOn(task)
-                }
-                project.withTask<KotlinJsDce> { task ->
-                    run.dependsOn(task)
-                }
-                project.withTask<ProcessResources> { task ->
-                    run.dependsOn(task)
-                }
+                    project.withTask<KotlinJsCompile> { task ->
+                        run.dependsOn(task)
+                    }
+                    project.withTask<KotlinJsDce> { task ->
+                        run.dependsOn(task)
+                    }
+                    project.withTask<ProcessResources> { task ->
+                        run.dependsOn(task)
+                    }
 
-                run.dependsOn(packagesTask)
+                    run.dependsOn(packagesTask)
 
-                startTask.dependsOn(run)
-                stopTask.dependsOn(stop)
+                    startTask.dependsOn(run)
+                    stopTask.dependsOn(stop)
+                } catch (c: Throwable) {
+                    println(c.message)
+                    logger.info(c.message)
+                    throw c
+                }
             }
         }
     }

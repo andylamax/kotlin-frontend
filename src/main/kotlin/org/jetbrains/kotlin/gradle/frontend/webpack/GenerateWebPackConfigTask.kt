@@ -31,14 +31,14 @@ open class GenerateWebPackConfigTask : DefaultTask() {
     @get:Internal
     val bundles by lazy { project.frontendExtension.bundles().filterIsInstance<WebPackExtension>() }
 
-    //    @get:Input
-    private val bundleNameInput: Any by lazy { bundles.singleOrNull()?.bundleName ?: "" }
+    @get:Input
+    val bundleNameInput: Any by lazy { bundles.singleOrNull()?.bundleName ?: "" }
 
-    //    @get:Input
-    private val publicPathInput: Any by lazy { bundles.singleOrNull()?.publicPath ?: "" }
+    @get:Input
+    val publicPathInput: Any by lazy { bundles.singleOrNull()?.publicPath ?: "" }
 
-    //    @get:Input
-    private val outputFileName by lazy { kotlinOutput(project).name }
+    @get:Input
+    val outputFileName by lazy { kotlinOutput(project).name }
 
     @get:OutputDirectory
     val bundleDirectory by lazy {
@@ -51,8 +51,8 @@ open class GenerateWebPackConfigTask : DefaultTask() {
     @Input
     val defined = project.frontendExtension.defined
 
-    //    @get:Input
-    private val isDceEnabled: Boolean by lazy {
+    @get:Input
+    val isDceEnabled: Boolean by lazy {
         !project.tasks
                 .withType(KotlinJsDce::class.java)
                 .none { it.isEnabled }
@@ -98,6 +98,7 @@ open class GenerateWebPackConfigTask : DefaultTask() {
                     .forEach { resolveRoots.add(it.parentFile.toRelativeString(project.buildDir)) }
         } else {
             resolveRoots.addAll(dceOutputFiles.map { it.toRelativeString(project.buildDir) })
+            resolveRoots.addAll(dceOutputFiles.map { it.absolutePath })
         }
 
         if (testMode) {
@@ -131,12 +132,28 @@ open class GenerateWebPackConfigTask : DefaultTask() {
         else dceOutputs.absoluteFile
     }
 
+    private fun file(path: String): File? {
+        val f = project.file(path)
+        return if (f.exists()) f else null
+    }
+
     @TaskAction
     fun generateConfig() {
         val bundle = bundles.singleOrNull()
                 ?: throw GradleException("Only single webpack bundle supported")
 
         val resolveRoots = getModuleResolveRoots(false)
+
+        val sourceSets: SourceSetContainer? = project.convention.findPlugin(JavaPluginConvention::class.java)?.sourceSets
+        val mainSourceSet: SourceSet? = sourceSets?.findByName("main")
+        val resources = mainSourceSet?.output?.resourcesDir
+
+        val contentBase = listOf(
+                bundle.contentPath?.absolutePath,
+                file("src/jsMain/resources")?.absolutePath,
+                file("src/main/resources")?.absolutePath,
+                resources?.absolutePath
+        ).mapNotNull { it }
 
         val json = linkedMapOf(
                 "mode" to bundle.mode,
@@ -150,6 +167,10 @@ open class GenerateWebPackConfigTask : DefaultTask() {
                         "chunkFilename" to "[id].bundle.js",
                         "publicPath" to bundle.publicPath
                 ),
+                "devServer" to mapOf(
+                        "port" to bundle.port,
+                        "contentBase" to contentBase
+                ),
                 "module" to mapOf(
                         "rules" to emptyList<Any>()
                 ),
@@ -161,21 +182,14 @@ open class GenerateWebPackConfigTask : DefaultTask() {
 
         webPackConfigFile.bufferedWriter().use { out ->
             out.appendln("'use strict';")
-            out.appendln()
-
-            out.appendln("var webpack = require('webpack');")
-
-            out.appendln()
             out.append("var config = ")
             out.append(JsonBuilder(json).toPrettyString())
             out.appendln(";")
-
 
             if (defined.isNotEmpty()) {
                 out.append("var defined = ")
                 out.append(JsonBuilder(defined).toPrettyString())
                 out.appendln(";")
-
                 out.appendln("config.plugins.push(new webpack.DefinePlugin(defined));")
             }
 
@@ -216,6 +230,5 @@ open class GenerateWebPackConfigTask : DefaultTask() {
                 else -> project.file(dir)
             }
         }
-
     }
 }

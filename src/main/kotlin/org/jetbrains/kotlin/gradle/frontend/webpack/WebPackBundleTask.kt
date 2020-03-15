@@ -12,14 +12,13 @@ import org.jetbrains.kotlin.gradle.frontend.util.*
 open class WebPackBundleTask : DefaultTask() {
     private val npm = project.extensions.getByType(NpmExtension::class.java)
 
-    //    @get:Nested
     private val config by lazy {
         project.frontendExtension.bundles().filterIsInstance<WebPackExtension>().singleOrNull()
                 ?: throw GradleException("Only one webpack bundle is supported")
     }
 
-    //    @get:InputFile
-    private val webPackConfigFile by lazy {
+    @get:InputFile
+    val webPackConfigFile by lazy {
         config.webpackConfigFile?.let { project.file(it) }
                 ?: project.buildDir.resolve("webpack.config.js")
     }
@@ -37,22 +36,28 @@ open class WebPackBundleTask : DefaultTask() {
                 .let { JsonSlurper().parse(it) as Map<String, Any?> }["version"]
                 ?.let { it as String }
 
+        val nodePath = nodePath(project.rootProject, "node").first().absolutePath
+        val webpackPath = npm.nodeModulesDir.resolve("webpack/bin/webpack.js").absolutePath
+        val configFile = webPackConfigFile.absolutePath
         val processBuilderCommands = arrayListOf(
-                nodePath(project, "node").first().absolutePath,
-                npm.nodeModulesDir.resolve("webpack/bin/webpack.js").absolutePath,
-                "--config", webPackConfigFile.absolutePath
+                nodePath,
+                webpackPath,
+                "--config", configFile
         )
+//        val processBuilderCommands = arrayListOf(
+//                "node",
+//                "node_modules/webpack/bin/webpack.js",
+//                "--config", configFile
+//        )
         val webpackMajorVersion = webpackVersion
                 ?.split('.')
                 ?.firstOrNull()
                 ?.toInt()
         if (webpackMajorVersion != null && webpackMajorVersion >= 4) {
-            processBuilderCommands.addAll(arrayOf(
-                    "--mode", config.mode
-            ))
+            processBuilderCommands.addAll(arrayOf("--mode", config.mode))
         }
         ProcessBuilder(processBuilderCommands)
-                .directory(project.buildDir)
-                .startWithRedirectOnFail(project, "node webpack.js")
+                .directory(project.rootProject.buildDir)
+                .startWithRedirectOnFail(project.rootProject, "node webpack.js")
     }
 }

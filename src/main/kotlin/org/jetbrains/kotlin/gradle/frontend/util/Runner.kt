@@ -43,7 +43,7 @@ fun ProcessBuilder.startWithRedirectOnFail(project: Project, name: String, exec:
     return process
 }
 
-private object DummyExecutor : Executor {
+object DummyExecutor : Executor {
     override fun execute(command: Runnable) {
         Thread(command).start()
     }
@@ -120,7 +120,7 @@ internal class OutputStreamWithBuffer(out: OutputStream, sizeLimit: Int) : Filte
     }
 }
 
-private class ProcessHandler(val process: java.lang.Process, private val out: OutputStream, private val err: OutputStream, private val exec: Executor) {
+class ProcessHandler(val process: java.lang.Process, private val out: OutputStream, private val err: OutputStream, private val exec: Executor) {
     private val latch = CountDownLatch(1)
     private var exitCode: Int = 0
     private var exception: Throwable? = null

@@ -40,12 +40,20 @@ abstract class AbstractStartStopTask<S : Any> : DefaultTask() {
     protected open fun startedMessage(): Unit = logger.warn("$identifier started")
     protected open fun stoppedMessage(): Unit = logger.warn("$identifier stopped")
 
-    fun serverLog() = serverLog(project.buildDir.resolve("logs"))
-    protected open fun serverLog(logsDir: File): File = logsDir.resolve("$identifier.log")
+    fun serverLog() = serverLog(project.buildDir.resolve("logs").apply { mkdirsOrFail() })
+    protected open fun serverLog(logsDir: File): File = logsDir.resolve("$identifier.log").apply {
+        parentFile.mkdirsOrFail()
+        if (!exists()) createNewFile()
+    }
 
     @get:Internal
     protected open val stateFile: File
-        get() = project.buildDir.resolve(".run-$identifier.txt")
+        get() = project.buildDir.resolve(".run-$identifier.txt").apply {
+            parentFile.mkdirsOrFail()
+            if (!exists()) {
+                createNewFile()
+            }
+        }
 
     protected fun doStart() {
         val oldStopInfo = tryReadState(stateFile)

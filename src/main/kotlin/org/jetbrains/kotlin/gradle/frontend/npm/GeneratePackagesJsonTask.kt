@@ -61,31 +61,57 @@ open class GeneratePackagesJsonTask : DefaultTask() {
                 .mapNotNull { it.kotlinOptions.outputFile?.substringAfterLast('/')?.substringAfterLast('\\')?.removeSuffix(".js") }
     }
 
-    @OutputFile
-    lateinit var packageJsonFile: File
+    //    @OutputFile
+    val packageJsonFile
+        get() = project.file("build/package.json").apply {
+            parentFile?.mkdirs()
+            if (!exists()) createNewFile()
+        }
 
-    @OutputFile
-    lateinit var npmrcFile: File
+    //    @OutputFile
+    val npmrcFile: File
+        get() = packageJsonFile.resolveSibling(".npmrc").apply {
+            parentFile?.mkdirs()
+            if (!exists()) createNewFile()
+        }
 
     @OutputFile
     val buildPackageJsonFile: File?
+
+    //    @OutputFile
+    val globalPackageJsonFile: File
+        get() {
+            val globalPackgJsonFile = project.rootProject.buildDir.resolve("package.json").apply {
+                parentFile?.mkdirs()
+                if (!exists()) createNewFile()
+            }
+            return if (globalPackgJsonFile.isSame(packageJsonFile)) {
+                packageJsonFile
+            } else globalPackgJsonFile
+        }
 
     init {
         if (configPartsDir.exists()) {
             (inputs as TaskInputs).dir(configPartsDir)
         }
-        buildPackageJsonFile = project.convention.findPlugin(JavaPluginConvention::class.java)?.sourceSets?.let { sourceSets ->
+        val packgJson = project.convention.findPlugin(JavaPluginConvention::class.java)?.sourceSets?.let { sourceSets ->
             sourceSets.findByName("main")?.output?.resourcesDir?.resolve("package.json")
         }
+        buildPackageJsonFile = if (packgJson?.isSame(packageJsonFile) == true) {
+            packageJsonFile
+        } else packgJson
 
         if (buildPackageJsonFile != null) {
             outputs.file(buildPackageJsonFile)
         }
+        outputs.file(globalPackageJsonFile)
 
         onlyIf {
             npm.dependencies.isNotEmpty() || npm.developmentDependencies.isNotEmpty() || toolsDependencies.isNotEmpty()
         }
     }
+
+    private fun File.isSame(f: File) = absolutePath == f.absolutePath
 
     @TaskAction
     fun generate() {
@@ -126,7 +152,13 @@ open class GeneratePackagesJsonTask : DefaultTask() {
                 .map { LinkedHashMap(JsonSlurper().parse(it) as Map<*, *>) }
 
         val resultJson = allIncluded.fold(packagesJson, ::mergeMaps)
-        packageJsonFile.writeText(JsonBuilder(resultJson).toPrettyString())
+        listOf(packageJsonFile, buildPackageJsonFile, globalPackageJsonFile).mapNotNull {
+            it?.absolutePath
+        }.toSet().forEach {
+            println("Printing to file $it")
+            File(it).writeText(JsonBuilder(resultJson).toPrettyString())
+        }
+//        packageJsonFile.writeText(JsonBuilder(resultJson).toPrettyString())
         npmrcFile.writeText("""
         progress=false
         package-lock=false
@@ -135,9 +167,10 @@ open class GeneratePackagesJsonTask : DefaultTask() {
 
         npmrcFile.resolveSibling("package-lock.json").delete()
 
-        if (buildPackageJsonFile != null) {
-            buildPackageJsonFile.parentFile.mkdirsOrFail()
-            packageJsonFile.copyTo(buildPackageJsonFile, overwrite = true)
-        }
+//        if (buildPackageJsonFile != null) {
+//            buildPackageJsonFile.parentFile.mkdirsOrFail()
+//            packageJsonFile.copyTo(buildPackageJsonFile, overwrite = true)
+//        }
+//        packageJsonFile.copyTo(globalPackageJsonFile, overwrite = true)
     }
 }

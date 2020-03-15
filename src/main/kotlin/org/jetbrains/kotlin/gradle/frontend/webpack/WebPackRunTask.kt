@@ -18,22 +18,28 @@ open class WebPackRunTask : AbstractStartStopTask<WebPackRunTask.State>() {
     @Input
     var start: Boolean = true
 
-    //    @get:Nested
-    private val config by lazy {
+    @get:Nested
+    val config by lazy {
         project.frontendExtension.bundles().filterIsInstance<WebPackExtension>().singleOrNull()
                 ?: throw GradleException("Only one webpack bundle is supported")
     }
 
     @InputFile
-    val webPackConfigFile = config.webpackConfigFile?.let {
+    val webPackConfigFile = (config.webpackConfigFile?.let {
         project.file(it)
-    } ?: project.buildDir.resolve("webpack.config.js")
+    } ?: project.buildDir.resolve("webpack.config.js")).apply {
+        parentFile.mkdirsOrFail()
+        if (!exists()) createNewFile()
+    }
 
     @Internal
     val logTailer = LogTail({ serverLog().toPath() })
 
     @OutputFile
-    val devServerLauncherFile = project.buildDir.resolve(DevServerLauncherFileName).apply { if (!exists()) createNewFile() }
+    val devServerLauncherFile = project.buildDir.resolve(DevServerLauncherFileName).apply {
+        parentFile.mkdirsOrFail()
+        if (!exists()) createNewFile()
+    }
 
     @get:Internal
     val hashes by lazy { hashOf(devServerLauncherFile, webPackConfigFile) } // TODO get all the hashes of all included configs
@@ -67,6 +73,7 @@ open class WebPackRunTask : AbstractStartStopTask<WebPackRunTask.State>() {
                 doStart()
             } catch (t: Throwable) {
                 logTailer.dumpLog()
+                println(t.message)
                 throw t
             }
         } else {
@@ -75,20 +82,26 @@ open class WebPackRunTask : AbstractStartStopTask<WebPackRunTask.State>() {
     }
 
     override fun beforeStart(): State? {
+        println("Preparing dev-server-config")
         val launcherFileTemplate = javaClass.classLoader.getResourceAsStream("kotlin/webpack/webpack-dev-server-launcher.js")?.reader()?.readText()
                 ?: throw GradleException("No dev-server launcher template found")
-
-        devServerLauncherFile.writeText(
-                launcherFileTemplate
-                        .replace("require('\$RunConfig\$')",
-                                JsonBuilder(GenerateWebpackHelperTask.config(project, config, webPackConfigFile)).toPrettyString()
-                        )
-        )
-
+        println("Reading dev-server-config template")
+        println(launcherFileTemplate)
+        try {
+            val devServerConfig = launcherFileTemplate.replace("require('\$RunConfig\$')",
+                    JsonBuilder(GenerateWebpackHelperTask.config(project, config, webPackConfigFile)).toPrettyString()
+            )
+            println(devServerConfig)
+            devServerLauncherFile.writeText(devServerConfig)
+        } catch (c: Throwable) {
+            println("Failed here: ${c.message}")
+            throw c
+        }
         try {
             val newPermissions = java.nio.file.Files.getPosixFilePermissions(devServerLauncherFile.toPath()) + PosixFilePermission.OWNER_EXECUTE
             java.nio.file.Files.setPosixFilePermissions(devServerLauncherFile.toPath(), newPermissions)
         } catch (ignore: UnsupportedOperationException) {
+            println(ignore.message)
         }
 
         return State(config.host, config.port, defined, hashes)

@@ -1,10 +1,7 @@
 package org.jetbrains.kotlin.gradle.frontend.npm
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.OutputDirectory
-import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.*
 import org.gradle.process.ExecSpec
 import org.jetbrains.kotlin.gradle.frontend.Dependency
 import org.jetbrains.kotlin.gradle.frontend.util.NodeJsDownloadTask
@@ -22,9 +19,12 @@ open class NpmInstallTask : DefaultTask() {
     private val npm = project.extensions.getByType(NpmExtension::class.java)
 
     @InputFile
-    lateinit var packageJsonFile: File
+    val packageJsonFile: File = project.buildDir.resolve("package.json").apply {
+        parentFile?.mkdirs()
+        if (!exists()) createNewFile()
+    }
 
-//    @Internal
+    //    @Internal
     private val npmDirFile = project.tasks
             .filterIsInstance<NodeJsDownloadTask>()
             .map { it.nodePathTextFile }
@@ -40,8 +40,7 @@ open class NpmInstallTask : DefaultTask() {
     @TaskAction
     fun processInstallation() {
         logger.info("Running npm install")
-
-        val npm = nodePath(project, "npm").first()
+        val npm = nodePath(project.rootProject, "npm").first()
         val npmPath = npm.absolutePath
 
         val unpacked = project.tasks

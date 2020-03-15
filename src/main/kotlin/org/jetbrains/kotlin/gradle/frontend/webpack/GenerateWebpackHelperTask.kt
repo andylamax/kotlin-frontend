@@ -28,7 +28,6 @@ open class GenerateWebpackHelperTask : DefaultTask() {
         result.writeText("module.exports = $json;\n")
     }
 
-
     companion object {
         fun config(project: Project, config: WebPackExtension, webPackConfigFile: File) = mapOf(
                 "host" to config.host,

@@ -62,14 +62,14 @@ open class GeneratePackagesJsonTask : DefaultTask() {
     }
 
     //    @OutputFile
-    val packageJsonFile
+    private val packageJsonFile
         get() = project.file("build/package.json").apply {
             parentFile?.mkdirs()
             if (!exists()) createNewFile()
         }
 
     //    @OutputFile
-    val npmrcFile: File
+    private val npmrcFile: File
         get() = packageJsonFile.resolveSibling(".npmrc").apply {
             parentFile?.mkdirs()
             if (!exists()) createNewFile()
@@ -79,7 +79,7 @@ open class GeneratePackagesJsonTask : DefaultTask() {
     val buildPackageJsonFile: File?
 
     //    @OutputFile
-    val globalPackageJsonFile: File
+    private val globalPackageJsonFile: File
         get() {
             val globalPackgJsonFile = project.rootProject.buildDir.resolve("package.json").apply {
                 parentFile?.mkdirs()

@@ -155,10 +155,8 @@ open class GeneratePackagesJsonTask : DefaultTask() {
         listOf(packageJsonFile, buildPackageJsonFile, globalPackageJsonFile).mapNotNull {
             it?.absolutePath
         }.toSet().forEach {
-            println("Printing to file $it")
             File(it).writeText(JsonBuilder(resultJson).toPrettyString())
         }
-//        packageJsonFile.writeText(JsonBuilder(resultJson).toPrettyString())
         npmrcFile.writeText("""
         progress=false
         package-lock=false
@@ -166,11 +164,5 @@ open class GeneratePackagesJsonTask : DefaultTask() {
         """.trimIndent())
 
         npmrcFile.resolveSibling("package-lock.json").delete()
-
-//        if (buildPackageJsonFile != null) {
-//            buildPackageJsonFile.parentFile.mkdirsOrFail()
-//            packageJsonFile.copyTo(buildPackageJsonFile, overwrite = true)
-//        }
-//        packageJsonFile.copyTo(globalPackageJsonFile, overwrite = true)
     }
 }

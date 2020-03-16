@@ -13,20 +13,10 @@ object WebPackLauncher : Launcher {
         project.afterEvaluate {
             if (project.frontendExtension.bundles().any { it is WebPackExtension }) {
                 try {
-//                    val run = project.tasks.create("webpack-run", WebPackRunTask::class.java) { t ->
-//                        t.start = true
-//                        t.description = "Start webpack dev server (if not yet running)"
-//                        t.group = WebPackBundler.WebPackGroup
-//                    }
                     val run = project.tasks.create("webpack-run", WebpackDevServerStartTask::class.java) { t ->
                         t.description = "Start webpack dev server (if not yet running)"
                         t.group = WebPackBundler.WebPackGroup
                     }
-//                    val stop = project.tasks.create("webpack-stop", WebPackRunTask::class.java) { t ->
-//                        t.start = false
-//                        t.description = "Stop webpack dev server (if running)"
-//                        t.group = WebPackBundler.WebPackGroup
-//                    }
                     val stop = project.tasks.create("webpack-stop", WebpackDevServerStopTask::class.java) { t ->
                         t.description = "Stop webpack dev server (if running)"
                         t.group = WebPackBundler.WebPackGroup

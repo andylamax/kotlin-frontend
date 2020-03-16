@@ -82,28 +82,21 @@ open class WebPackRunTask : AbstractStartStopTask<WebPackRunTask.State>() {
     }
 
     override fun beforeStart(): State? {
-        println("Preparing dev-server-config")
         val launcherFileTemplate = javaClass.classLoader.getResourceAsStream("kotlin/webpack/webpack-dev-server-launcher.js")?.reader()?.readText()
                 ?: throw GradleException("No dev-server launcher template found")
-        println("Reading dev-server-config template")
-        println(launcherFileTemplate)
         try {
             val devServerConfig = launcherFileTemplate.replace("require('\$RunConfig\$')",
                     JsonBuilder(GenerateWebpackHelperTask.config(project, config, webPackConfigFile)).toPrettyString()
             )
-            println(devServerConfig)
             devServerLauncherFile.writeText(devServerConfig)
         } catch (c: Throwable) {
-            println("Failed here: ${c.message}")
             throw c
         }
         try {
             val newPermissions = java.nio.file.Files.getPosixFilePermissions(devServerLauncherFile.toPath()) + PosixFilePermission.OWNER_EXECUTE
             java.nio.file.Files.setPosixFilePermissions(devServerLauncherFile.toPath(), newPermissions)
         } catch (ignore: UnsupportedOperationException) {
-            println(ignore.message)
         }
-
         return State(config.host, config.port, defined, hashes)
     }
 

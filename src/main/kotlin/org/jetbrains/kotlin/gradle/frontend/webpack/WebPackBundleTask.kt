@@ -44,11 +44,6 @@ open class WebPackBundleTask : DefaultTask() {
                 webpackPath,
                 "--config", configFile
         )
-//        val processBuilderCommands = arrayListOf(
-//                "node",
-//                "node_modules/webpack/bin/webpack.js",
-//                "--config", configFile
-//        )
         val webpackMajorVersion = webpackVersion
                 ?.split('.')
                 ?.firstOrNull()

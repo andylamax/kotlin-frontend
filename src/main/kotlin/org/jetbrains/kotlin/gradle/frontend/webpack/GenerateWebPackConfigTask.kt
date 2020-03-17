@@ -116,6 +116,7 @@ open class GenerateWebPackConfigTask : DefaultTask() {
         // node modules
         resolveRoots.add(project.buildDir.resolve("node_modules").absolutePath)
         resolveRoots.add(npm.nodeModulesDir.absolutePath)
+        resolveRoots.add(npm.nodeModulesDir.toRelativeString(webPackConfigFile))
         resolveRoots.add(project.buildDir.resolve("node_modules").toRelativeString(project.buildDir))
 
         return resolveRoots

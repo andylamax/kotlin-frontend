@@ -53,6 +53,6 @@ open class WebPackBundleTask : DefaultTask() {
         }
         ProcessBuilder(processBuilderCommands)
                 .directory(project.rootProject.buildDir)
-                .startWithRedirectOnFail(project.rootProject, "node webpack.js")
+                .startWithRedirectOnFail(project.rootProject, processBuilderCommands.joinToString(" "))
     }
 }

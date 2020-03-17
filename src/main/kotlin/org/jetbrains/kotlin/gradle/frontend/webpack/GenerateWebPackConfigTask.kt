@@ -178,6 +178,11 @@ open class GenerateWebPackConfigTask : DefaultTask() {
                 "resolve" to mapOf(
                         "modules" to resolveRoots
                 ),
+                "resolveLoader" to mapOf(
+                        "modules" to listOf(npm.nodeModulesDir.absolutePath),
+                        "extensions" to listOf(".js", ".json"),
+                        "mainFields" to listOf("loader", "main")
+                ),
                 "plugins" to listOf<Any>()
         )
 
